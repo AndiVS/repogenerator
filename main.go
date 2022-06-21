@@ -50,8 +50,6 @@ type Generator struct {
 	data bytes.Buffer
 }
 
-var targetFile string
-
 func main() {
 	flag.Parse()
 	// We accept either one directory or a list of files. Which do we have?
@@ -176,7 +174,7 @@ func generateExec(methodName, sqlRequest, insertingValueString string) (execStri
 
 // generateQueryRow generates the queryRow request
 func generateQueryRow(methodName, sqlRequest, whereValue, scanString string) (queryRowString string) {
-	queryRowString += "\terr = p.db.QueryRow(ctx, " + sqlRequest + ", " + whereValue + ").Scan(" + scanString + ")\n"
+	queryRowString += "\terr = p.db.QueryRow( ctx, " + sqlRequest + ", " + whereValue + ").Scan(" + scanString + ")\n"
 	queryRowString += "\tif err != nil {\n"
 	queryRowString += fmt.Sprintf("\t\treturn nil, fmt.Errorf(\"%s error: %v \", err)\n", methodName, "%w")
 	queryRowString += "\t}\n\n"
