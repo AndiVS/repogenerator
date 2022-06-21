@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -51,26 +50,25 @@ type Generator struct {
 }
 
 func main() {
-	flag.Parse()
-	// We accept either one directory or a list of files. Which do we have?
-	args := flag.Args()
-	if len(args) == 0 {
-		// Default: process whole package in current directory.
-		args = []string{"."}
+	fileName := os.Getenv("GOFILE")
+	fmt.Printf("file name: %s\n", fileName)
+	path, err := filepath.Abs(fileName)
+	if err != nil {
+		panic(fmt.Sprintf("generator: error while finding abs file path - %s", err))
 	}
-	println(args[0])
-
+	fmt.Printf("path: %s\n", path)
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, args[0], nil, parser.AllErrors)
+	f, err := parser.ParseFile(fset, path, nil, parser.AllErrors)
+
 	if err != nil {
 		panic(err)
 	}
 
 	packageName := f.Name.Name
-	err = ast.Print(fset, f)
-	if err != nil {
-		panic(err)
-	}
+	//err = ast.Print(fset, f)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	structures := make([]*Structure, 0, len(f.Decls))
 	for _, v := range f.Decls {
@@ -82,7 +80,7 @@ func main() {
 	}
 
 	for _, v := range structures {
-		err := Generate(v)
+		err := Generate(v, path)
 		if err != nil {
 			panic(err)
 		}
@@ -311,9 +309,9 @@ func generateUpdate(structure Structure) *Method {
 	return &method
 }
 
-func Generate(structure *Structure) error {
+func Generate(structure *Structure, filepath string) error {
 	generator := Generator{
-		filePath:  fmt.Sprintf("repository/%s_repository.go", structure.name),
+		filePath:  filepath,
 		structure: *structure,
 		data:      bytes.Buffer{},
 	}
@@ -399,6 +397,12 @@ func (g *Generator) GenerateFile() error {
 		g.data.WriteString(fmt.Sprintf("%s\n", method.body))
 		g.data.WriteString("}\n\n")
 	}
-
-	return os.WriteFile(g.filePath, g.data.Bytes(), 0666)
+	folderPath, err := g.generateDirPath()
+	if err != nil {
+		return err
+	}
+	folderPath += "/repository/"
+	err = os.Mkdir(folderPath, 0755)
+	filePath := folderPath + g.structure.name + "_repository.go"
+	return os.WriteFile(filePath, g.data.Bytes(), 0666)
 }
